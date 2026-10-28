@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/header_logo_trace.dart';
+import '../widgets/header_logo_trace_v2.dart';
+import '../widgets/header_logo_variants.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/nav_bar.dart';
 
@@ -23,11 +25,38 @@ class RetailHome extends StatefulWidget {
 class _RetailHomeState extends State<RetailHome> {
   static const _iban = 'MN91 0004 0040 0238 9817';
 
+  /// Header background variants, in the order a tap cycles them: the two
+  /// hand-tuned originals, then the five from the shared engine.
+  static final _backgrounds = <(String, Widget)>[
+    ('Лого v1 — жижиг, баруун талд', const HeaderLogoTrace(underlap: 28)),
+    ('Лого v2 — том, налуу, зүүн талд', const HeaderLogoTraceV2(underlap: 28)),
+    for (final variant in logoVariants)
+      (
+        variant.name,
+        HeaderLogoVariant(
+          key: ValueKey(variant.name),
+          variant: variant,
+          underlap: 28,
+        ),
+      ),
+  ];
+
   int _tab = 0;
   bool _balanceHidden = false;
+  int _background = 1;
 
   void _copyIban() {
     Clipboard.setData(ClipboardData(text: _iban.replaceAll(' ', '')));
+    _toast('Дансны дугаар хуулагдлаа');
+  }
+
+  /// A tap anywhere on the header background switches the logo variant.
+  void _cycleBackground() {
+    setState(() => _background = (_background + 1) % _backgrounds.length);
+    _toast(_backgrounds[_background].$1);
+  }
+
+  void _toast(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -38,10 +67,7 @@ class _RetailHomeState extends State<RetailHome> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          content: Text(
-            'Дансны дугаар хуулагдлаа',
-            style: mr(14, FontWeight.w600, Colors.white),
-          ),
+          content: Text(message, style: mr(14, FontWeight.w600, Colors.white)),
         ),
       );
   }
@@ -60,15 +86,21 @@ class _RetailHomeState extends State<RetailHome> {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // Logo thread behind the header (HeaderShader is the
-                      // earlier silk). It runs 28px under the sheet so its
-                      // rounded corners show it too.
-                      const Positioned(
+                      // Logo thread behind the header — tap it to switch
+                      // variants. v1 is the small knot on the right (git tag
+                      // v1-logo-thread), v2 the large tilted one on the left;
+                      // HeaderShader is the earlier silk. It runs 28px under
+                      // the sheet so its rounded corners show it too.
+                      Positioned(
                         left: 0,
                         right: 0,
                         top: 0,
                         bottom: -28,
-                        child: HeaderLogoTrace(underlap: 28),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _cycleBackground,
+                          child: _backgrounds[_background].$2,
+                        ),
                       ),
                       _Header(
                         iban: _iban,
