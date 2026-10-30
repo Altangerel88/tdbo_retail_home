@@ -4,13 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/header_logo_trace.dart';
-import '../widgets/header_logo_trace_v2.dart';
-import '../widgets/header_logo_v8.dart';
-import '../widgets/header_logo_v9.dart';
-import '../widgets/header_logo_v10.dart';
-import '../widgets/header_logo_v11.dart';
-import '../widgets/header_logo_v12.dart';
-import '../widgets/header_logo_variants.dart';
+import '../widgets/header_logo_v1_fast.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/nav_bar.dart';
 
@@ -30,33 +24,21 @@ class RetailHome extends StatefulWidget {
 class _RetailHomeState extends State<RetailHome> {
   static const _iban = 'MN91 0004 0040 0238 9817';
 
-  /// Header background variants, in the order a tap cycles them: the two
-  /// hand-tuned originals, then the five from the shared engine.
+  /// Header background variants, in the order a tap cycles them. Only v1
+  /// is in use now, so the cycle is v1 and its reworks. The earlier
+  /// v2–v12 (tilted knots, four arrows) are still in lib/widgets and in git
+  /// (tags v2-v7-variants, v8-smooth, v9-v12-arrows), just not listed here.
   static final _backgrounds = <(String, Widget)>[
     ('Лого v1 — жижиг, баруун талд', const HeaderLogoTrace(underlap: 28)),
-    ('Лого v2 — том, налуу, зүүн талд', const HeaderLogoTraceV2(underlap: 28)),
-    for (final variant in logoVariants)
-      (
-        variant.name,
-        HeaderLogoVariant(
-          key: ValueKey(variant.name),
-          variant: variant,
-          underlap: 28,
-        ),
-      ),
-    ('Лого v8 — v6, удаан, зөөлөн', const HeaderLogoV8(underlap: 28)),
-    ('Лого v9 — 4 сум эргэлдэж нийлнэ', const HeaderLogoV9(underlap: 28)),
-    ('Лого v10 — 4 сум шулуун ирж нийлнэ', const HeaderLogoV10(underlap: 28)),
     (
-      'Лого v11 — шулуун сум эргэлдэж лого болно',
-      const HeaderLogoV11(underlap: 28),
+      'Лого v2 — v1, лого нэг дор зурагдана',
+      const HeaderLogoV1Fast(underlap: 28),
     ),
-    ('Лого v12 — v11, сүүл нь бүдгэрнэ', const HeaderLogoV12(underlap: 28)),
   ];
 
   int _tab = 0;
   bool _balanceHidden = false;
-  int _background = 0;
+  int _background = 1;
 
   void _copyIban() {
     Clipboard.setData(ClipboardData(text: _iban.replaceAll(' ', '')));
@@ -101,9 +83,9 @@ class _RetailHomeState extends State<RetailHome> {
                     children: [
                       // Logo thread behind the header — tap it to switch
                       // variants. v1 is the small knot on the right (git tag
-                      // v1-logo-thread), v2 the large tilted one on the left;
-                      // HeaderShader is the earlier silk. It runs 28px under
-                      // the sheet so its rounded corners show it too.
+                      // v1-logo-thread); v2 is v1 with the knot drawn all at
+                      // once. HeaderShader is the earlier silk. It runs 28px
+                      // under the sheet so its rounded corners show it too.
                       Positioned(
                         left: 0,
                         right: 0,
