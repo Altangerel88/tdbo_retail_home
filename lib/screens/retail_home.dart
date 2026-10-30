@@ -5,6 +5,7 @@ import '../theme/tokens.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/header_logo_trace.dart';
 import '../widgets/header_logo_v1_fast.dart';
+import '../widgets/header_logo_v3.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/nav_bar.dart';
 
@@ -34,11 +35,12 @@ class _RetailHomeState extends State<RetailHome> {
       'Лого v2 — v1, лого нэг дор зурагдана',
       const HeaderLogoV1Fast(underlap: 28),
     ),
+    ('Лого v3 — v2, лавлагааны хөдөлгөөнөөр', const HeaderLogoV3(underlap: 28)),
   ];
 
   int _tab = 0;
   bool _balanceHidden = false;
-  int _background = 1;
+  int _background = 2;
 
   void _copyIban() {
     Clipboard.setData(ClipboardData(text: _iban.replaceAll(' ', '')));

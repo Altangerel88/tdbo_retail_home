@@ -12,9 +12,10 @@ import '../theme/tokens.dart';
 /// the whole outline in one long stroke, which took most of the tie. Here,
 /// the moment the line arrives, every piece of the knot draws at once: each
 /// of the four arrows from the outermost point of its rim, both ways round,
-/// so eight strokes close the outline in under two seconds. The knot fills,
-/// turns a quarter, and comes undone the same way, all at once, as the line
-/// pulls out to the right. Loops every 11 s.
+/// so eight strokes close the outline in under two seconds, carrying on at
+/// the speed the line arrives at. The knot fills, turns a quarter, and comes
+/// undone the same way, all at once, as the line pulls out to the right.
+/// Every move eases in and out on a sine. Loops every 11 s.
 ///
 /// A copy of header_logo_trace.dart (v1), which stays as it is. With the
 /// system "reduce motion" setting on, the finished knot sits still.
@@ -88,10 +89,47 @@ class _Beat {
   static const unfillEnd = 8.9, outTailStart = 8.2, outTailEnd = 10.0;
 }
 
-/// How far the knot's strokes have drawn, for [u] of the draw: half steady,
-/// half easeOutSine. They leave at about 1.3× their average pace, where
-/// easeOutSine alone bursts out at 1.6×, and still ease into the close.
-double _drawn(double u) => 0.5 * u + 0.5 * math.sin(math.pi * u / 2);
+/// The head's run, in along the lead-in and on round the knot, as one smooth
+/// motion. It picks up speed off the left edge and is already slowing as it
+/// reaches the knot; there it splits into the eight strokes, which carry on
+/// at the speed it arrived at and ease to a stop as they close. The speed at
+/// the split is chosen so the slowing matches on both sides as well, so the
+/// line doesn't jolt where it splits.
+///
+/// Each half is a cubic, so its speed is a parabola: a run of [length] over
+/// [time] at average pace m that starts at speed a and ends at speed b has
+/// speed a + (b − a)·u + (6m − 3a − 3b)·u(1 − u) at u of the way.
+class _Run {
+  _Run(this.lead, this.stroke) {
+    const t1 = _Beat.inEnd, t2 = _Beat.drawEnd - _Beat.inEnd;
+    final m1 = lead / t1, m2 = stroke / t2;
+    // Same speed and the same slowing either side of the split; kept low
+    // enough that neither half ever runs backwards.
+    split = math.min(
+      1.5 * (m1 / t1 + m2 / t2) / (1 / t1 + 1 / t2),
+      2.9 * math.min(m1, m2),
+    );
+    _k1 = 6 * m1 - 3 * split;
+    _k2 = 6 * m2 - 3 * split;
+  }
+
+  /// Lengths of the lead-in and of each stroke (half a piece's outline).
+  final double lead, stroke;
+
+  /// Speed where the line splits, px/s.
+  late final double split;
+  late final double _k1, _k2;
+
+  /// Distance along the lead-in after [u] of its time, from rest.
+  double inAt(double u) =>
+      _Beat.inEnd * (split * u * u / 2 + _k1 * (u * u / 2 - u * u * u / 3));
+
+  /// Share of each stroke drawn after [u] of the draw, coming to rest.
+  double drawnAt(double u) =>
+      (_Beat.drawEnd - _Beat.inEnd) *
+      (split * (u - u * u / 2) + _k2 * (u * u / 2 - u * u * u / 3)) /
+      stroke;
+}
 
 /// One moment of the loop.
 class _Frame {
@@ -314,31 +352,38 @@ class _TracePainter extends CustomPainter {
       return _Frame(
         inTail:
             lin *
-            Curves.easeInOutCubic.transform(at(_Beat.tailStart, _Beat.tailEnd)),
-        // Picks up speed on the way in, so it reaches the knot still moving
-        // and the knot's strokes carry on at about that pace.
-        inHead: lin * Curves.easeInSine.transform(at(0, _Beat.inEnd)),
-        draw: _drawn(at(_Beat.inEnd, _Beat.drawEnd)),
+            Curves.easeInOutSine.transform(at(_Beat.tailStart, _Beat.tailEnd)),
+        inHead: th.run.inAt(at(0, _Beat.inEnd)).clamp(0.0, lin),
+        draw: th.run.drawnAt(at(_Beat.inEnd, _Beat.drawEnd)).clamp(0.0, 1.0),
         erase: 0,
         outTail: 0,
         outHead: 0,
-        fill: Curves.easeOutCubic.transform(at(_Beat.fillStart, _Beat.fillEnd)),
+        fill: Curves.easeInOutSine.transform(
+          at(_Beat.fillStart, _Beat.fillEnd),
+        ),
         // Past the turn the knot matches itself again, so it can snap back to 0.
         turn: s < _Beat.turnEnd
             ? math.pi /
                   2 *
-                  Curves.easeInOutCubic.transform(
+                  Curves.easeInOutSine.transform(
                     at(_Beat.turnStart, _Beat.turnEnd),
                   )
             : 0,
-        spark: at(0, 0.25) * (1 - at(_Beat.drawEnd - 0.35, _Beat.drawEnd)),
+        spark:
+            Curves.easeInOutSine.transform(at(0, 0.3)) *
+            (1 -
+                Curves.easeInOutSine.transform(
+                  at(_Beat.drawEnd - 0.5, _Beat.drawEnd),
+                )),
       );
     }
     return _Frame(
       inTail: lin,
       inHead: lin,
       draw: 1,
-      erase: Curves.easeInSine.transform(at(_Beat.untieStart, _Beat.eraseEnd)),
+      erase: Curves.easeInOutSine.transform(
+        at(_Beat.untieStart, _Beat.eraseEnd),
+      ),
       outTail:
           lout *
           Curves.easeInOutSine.transform(
@@ -349,7 +394,7 @@ class _TracePainter extends CustomPainter {
           Curves.easeInOutSine.transform(at(_Beat.untieStart, _Beat.pullEnd)),
       fill:
           1 -
-          Curves.easeInCubic.transform(at(_Beat.untieStart, _Beat.unfillEnd)),
+          Curves.easeInOutSine.transform(at(_Beat.untieStart, _Beat.unfillEnd)),
       turn: 0,
       spark: 0,
     );
@@ -525,6 +570,8 @@ class _Thread {
             .computeMetrics()
             .single;
 
+    run = _Run(leadIn.length, loops.first.length / 2);
+
     finished = _Frame(
       inTail: leadIn.length,
       inHead: leadIn.length,
@@ -548,6 +595,9 @@ class _Thread {
 
   /// The four pieces' outlines, each a closed stroke.
   final loops = <ui.PathMetric>[];
+
+  /// How the head and the strokes move.
+  late final _Run run;
 
   /// The knot fully tied and filled, for reduce-motion.
   late final _Frame finished;
