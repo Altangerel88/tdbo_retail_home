@@ -78,7 +78,7 @@ class _HeaderLogoV3State extends State<HeaderLogoV3>
 
 /// Beats of the loop, in seconds.
 class _Beat {
-  static const loop = 8.8;
+  static const loop = 9.3;
 
   // In: the head runs in from the left and reaches the knot. The tail
   // follows, drawing the lead-in back into the knot.
@@ -87,31 +87,32 @@ class _Beat {
 
   // Each piece whips round its outline in [draw], starting [stagger] after
   // the one before it: bottom (where the line arrives), left, top, right.
-  static const draw = 1.8, stagger = 0.08;
+  static const draw = 2.3, stagger = 0.08;
   static const order = [2, 3, 0, 1];
 
   // The lock: the knot pops up to full size and fills.
-  static const lockStart = 2.5, lockEnd = 3.3;
-  static const fillStart = 2.5, fillEnd = 3.4;
+  static const lockStart = 2.7, lockEnd = 3.6;
+  static const fillStart = 2.7, fillEnd = 3.7;
 
   // A quarter turn with a little pull-back first and overshoot after.
-  static const turnStart = 4.3, turnEnd = 5.7;
+  static const turnStart = 4.7, turnEnd = 6.1;
 
   // Out: the knot swells, then shrinks as its strokes unwind. The rest of
   // the loop is empty.
-  static const swellStart = 6.5, outStart = 6.8, eraseEnd = 7.8;
-  static const unfillEnd = 7.3;
+  static const swellStart = 7.0, outStart = 7.3, eraseEnd = 8.3;
+  static const unfillEnd = 7.8;
 }
 
 /// How far the knot sits below full size before it pops, how far it swells
-/// before coming undone, and how small it gets as it goes.
-const _small = 0.95, _swell = 1.03, _gone = 0.88;
+/// before coming undone, and how small it gets as it goes. The pop and the
+/// swell are kept small, a nudge rather than a bounce.
+const _small = 0.98, _swell = 1.015, _gone = 0.88;
 
-/// Slight anticipation and overshoot, about 5% either side.
-const _backInOut = Cubic(0.6, -0.25, 0.3, 1.25);
+/// Slight anticipation and overshoot, about 1% either side.
+const _backInOut = Cubic(0.6, -0.15, 0.3, 1.15);
 
-/// Overshoots by about 8% and settles.
-const _backOut = Cubic(0.3, 1.5, 0.6, 1);
+/// Overshoots by about 2% and settles.
+const _backOut = Cubic(0.3, 1.25, 0.6, 1);
 
 /// The head's run in along the lead-in, from rest, arriving at the speed the
 /// strokes leave at. The strokes ease out on a cubic, so they leave at three
