@@ -19,7 +19,8 @@ import '../theme/tokens.dart';
 ///   once the strokes have formed them;
 /// - anticipation: the quarter turn pulls back a little first and overshoots
 ///   a little after, and before coming undone the knot swells slightly, then
-///   shrinks away as its strokes unwind and the line whips out to the right.
+///   shrinks away as its strokes unwind. Nothing leaves to the right: the
+///   knot simply goes, and the line comes in again from the left.
 ///
 /// The line still runs in from the left and hands over to the strokes at
 /// the same speed, as in v2. A copy of header_logo_v1_fast.dart (v2), which
@@ -77,7 +78,7 @@ class _HeaderLogoV3State extends State<HeaderLogoV3>
 
 /// Beats of the loop, in seconds.
 class _Beat {
-  static const loop = 9.4;
+  static const loop = 8.8;
 
   // In: the head runs in from the left and reaches the knot. The tail
   // follows, drawing the lead-in back into the knot.
@@ -96,11 +97,10 @@ class _Beat {
   // A quarter turn with a little pull-back first and overshoot after.
   static const turnStart = 4.3, turnEnd = 5.7;
 
-  // Out: the knot swells, then shrinks as its strokes unwind and the line
-  // whips out to the right; the tail follows it out.
+  // Out: the knot swells, then shrinks as its strokes unwind. The rest of
+  // the loop is empty.
   static const swellStart = 6.5, outStart = 6.8, eraseEnd = 7.8;
-  static const unfillEnd = 7.3, pullEnd = 7.7;
-  static const outTailStart = 7.1, outTailEnd = 8.4;
+  static const unfillEnd = 7.3;
 }
 
 /// How far the knot sits below full size before it pops, how far it swells
@@ -145,8 +145,6 @@ class _Frame {
     required this.inHead,
     required this.draw,
     required this.erase,
-    required this.outTail,
-    required this.outHead,
     required this.fill,
     required this.turn,
     required this.scale,
@@ -160,9 +158,6 @@ class _Frame {
   /// how far all have been undone, 0–1.
   final List<double> draw;
   final double erase;
-
-  /// Visible stretch of the lead-out, as distances along it.
-  final double outTail, outHead;
 
   /// Knot fill, 0–1.
   final double fill;
@@ -314,19 +309,6 @@ class _TracePainter extends CustomPainter {
     }
     canvas.restore();
 
-    // Lead-out, dissolving toward the right edge.
-    if (f.outHead > f.outTail) {
-      canvas.drawPath(
-        th.leadOut.extractPath(f.outTail, f.outHead),
-        Paint.from(line)
-          ..shader = ui.Gradient.linear(
-            Offset(c.dx, y),
-            Offset(size.width, y),
-            [T.yellow, T.yellow.withValues(alpha: 0)],
-            [0.1, 1],
-          ),
-      );
-    }
     canvas.restore();
 
     // A spark on each moving head: the lead-in's, then the strokes'.
@@ -373,7 +355,7 @@ class _TracePainter extends CustomPainter {
     double sine(double from, double to) =>
         Curves.easeInOutSine.transform(at(from, to));
 
-    final lin = th.leadIn.length, lout = th.leadOut.length;
+    final lin = th.leadIn.length;
     final lastEnd = _Beat.inEnd + 3 * _Beat.stagger + _Beat.draw;
 
     if (s < _Beat.swellStart) {
@@ -389,8 +371,6 @@ class _TracePainter extends CustomPainter {
         inHead: th.run.inAt(at(0, _Beat.inEnd)).clamp(0.0, lin),
         draw: draw,
         erase: 0,
-        outTail: 0,
-        outHead: 0,
         fill: sine(_Beat.fillStart, _Beat.fillEnd),
         // Past the turn the knot matches itself again, so it can snap back to 0.
         turn: s < _Beat.turnEnd
@@ -411,10 +391,6 @@ class _TracePainter extends CustomPainter {
       inHead: lin,
       draw: const [1, 1, 1, 1],
       erase: Curves.easeInCubic.transform(going),
-      outTail: lout * sine(_Beat.outTailStart, _Beat.outTailEnd),
-      outHead:
-          lout *
-          Curves.easeInOutCubic.transform(at(_Beat.outStart, _Beat.pullEnd)),
       fill: 1 - sine(_Beat.outStart, _Beat.unfillEnd),
       turn: 0,
       scale: s < _Beat.outStart
@@ -587,12 +563,6 @@ class _Thread {
               ..lineTo(center.dx, lineY))
             .computeMetrics()
             .single;
-    leadOut =
-        (Path()
-              ..moveTo(center.dx, lineY)
-              ..lineTo(size.width + 8, lineY))
-            .computeMetrics()
-            .single;
 
     run = _Run(leadIn.length, loops.first.length / 2);
     join = Offset(center.dx, lineY);
@@ -602,8 +572,6 @@ class _Thread {
       inHead: leadIn.length,
       draw: const [1, 1, 1, 1],
       erase: 0,
-      outTail: 0,
-      outHead: 0,
       fill: 1,
       turn: 0,
       scale: 1,
@@ -617,7 +585,7 @@ class _Thread {
   late final double lineY, unit;
   late final Offset center;
   late final Path knot;
-  late final ui.PathMetric leadIn, leadOut;
+  late final ui.PathMetric leadIn;
 
   /// The four pieces' outlines, each a closed stroke.
   final loops = <ui.PathMetric>[];
