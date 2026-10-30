@@ -12,9 +12,9 @@ import '../theme/tokens.dart';
 /// the whole outline in one long stroke, which took most of the tie. Here,
 /// the moment the line arrives, every piece of the knot draws at once: each
 /// of the four arrows from the outermost point of its rim, both ways round,
-/// so eight strokes close the outline in under a second. The knot fills,
+/// so eight strokes close the outline in under two seconds. The knot fills,
 /// turns a quarter, and comes undone the same way, all at once, as the line
-/// pulls out to the right. Loops every 10 s.
+/// pulls out to the right. Loops every 11 s.
 ///
 /// A copy of header_logo_trace.dart (v1), which stays as it is. With the
 /// system "reduce motion" setting on, the finished knot sits still.
@@ -70,23 +70,28 @@ class _HeaderLogoV1FastState extends State<HeaderLogoV1Fast>
 
 /// Beats of the loop, in seconds.
 class _Beat {
-  static const loop = 10.0;
+  static const loop = 11.0;
 
   // In: the head runs in from the left and reaches the knot. The tail
   // follows, drawing the lead-in back into the knot.
-  static const inEnd = 1.2;
-  static const tailStart = 0.7, tailEnd = 2.0;
+  static const inEnd = 1.5;
+  static const tailStart = 0.9, tailEnd = 2.5;
 
   // The whole knot draws at once as the head arrives, fills, and turns.
-  static const drawEnd = 2.1;
-  static const fillStart = 1.7, fillEnd = 2.9;
-  static const turnStart = 3.6, turnEnd = 5.0;
+  static const drawEnd = 3.3;
+  static const fillStart = 2.6, fillEnd = 4.0;
+  static const turnStart = 4.6, turnEnd = 6.1;
 
   // Out: the head pulls out to the right as the knot comes undone all at
   // once, and the tail follows it out. The rest of the loop is empty.
-  static const untieStart = 6.8, eraseEnd = 7.7, pullEnd = 7.8;
-  static const unfillEnd = 7.9, outTailStart = 7.3, outTailEnd = 8.6;
+  static const untieStart = 7.6, eraseEnd = 8.9, pullEnd = 8.8;
+  static const unfillEnd = 8.9, outTailStart = 8.2, outTailEnd = 10.0;
 }
+
+/// How far the knot's strokes have drawn, for [u] of the draw: half steady,
+/// half easeOutSine. They leave at about 1.3× their average pace, where
+/// easeOutSine alone bursts out at 1.6×, and still ease into the close.
+double _drawn(double u) => 0.5 * u + 0.5 * math.sin(math.pi * u / 2);
 
 /// One moment of the loop.
 class _Frame {
@@ -313,7 +318,7 @@ class _TracePainter extends CustomPainter {
         // Picks up speed on the way in, so it reaches the knot still moving
         // and the knot's strokes carry on at about that pace.
         inHead: lin * Curves.easeInSine.transform(at(0, _Beat.inEnd)),
-        draw: Curves.easeOutSine.transform(at(_Beat.inEnd, _Beat.drawEnd)),
+        draw: _drawn(at(_Beat.inEnd, _Beat.drawEnd)),
         erase: 0,
         outTail: 0,
         outHead: 0,
