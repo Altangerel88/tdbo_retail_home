@@ -483,7 +483,8 @@ class _Thread {
     // The thread runs midway through the 24px under the pills; the knot
     // sits on it at the right, inset like the bell button above.
     lineY = size.height - underlap - 12;
-    final width = (size.width * 0.34).clamp(128.0, 168.0);
+    // 15% smaller than v1's knot.
+    final width = (size.width * 0.29).clamp(108.0, 143.0);
     unit = width / (2 * _extent);
     center = Offset(size.width - 20 - width / 2, lineY - width / 2);
 
