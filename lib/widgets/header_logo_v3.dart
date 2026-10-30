@@ -20,7 +20,8 @@ import '../theme/tokens.dart';
 ///   the left.
 ///
 /// The reference's bounces (a pop as the shape locks, overshoot on turns, a
-/// swell before leaving) are left out: the knot never overshoots.
+/// swell before leaving) are left out: the knot never overshoots. Nor does
+/// it turn: once formed, it holds still until it goes.
 ///
 /// The line still runs in from the left and hands over to the strokes at
 /// the same speed, as in v2. A copy of header_logo_v1_fast.dart (v2), which
@@ -78,26 +79,25 @@ class _HeaderLogoV3State extends State<HeaderLogoV3>
 
 /// Beats of the loop, in seconds.
 class _Beat {
-  static const loop = 9.3;
+  static const loop = 9.6;
 
   // In: the head runs in from the left and reaches the knot. The tail
   // follows, drawing the lead-in back into the knot.
-  static const inEnd = 1.3;
-  static const tailStart = 0.7, tailEnd = 2.0;
+  static const inEnd = 1.8;
+  static const tailStart = 1.0, tailEnd = 2.7;
 
   // Each piece whips round its outline in [draw], starting [stagger] after
   // the one before it: bottom (where the line arrives), left, top, right.
-  static const draw = 2.3, stagger = 0.08;
+  static const draw = 2.8, stagger = 0.08;
   static const order = [2, 3, 0, 1];
 
-  // The knot fills once its outline has formed, then turns a quarter.
-  static const fillStart = 2.7, fillEnd = 3.7;
-  static const turnStart = 4.7, turnEnd = 6.1;
+  // The knot fills once its outline has formed, then holds still.
+  static const fillStart = 3.2, fillEnd = 4.3;
 
   // Out: the knot shrinks as its strokes unwind. The rest of the loop is
   // empty.
-  static const outStart = 7.3, eraseEnd = 8.3;
-  static const unfillEnd = 7.8;
+  static const outStart = 7.6, eraseEnd = 8.6;
+  static const unfillEnd = 8.1;
 }
 
 /// How small the knot gets as it goes.
@@ -136,7 +136,6 @@ class _Frame {
     required this.draw,
     required this.erase,
     required this.fill,
-    required this.turn,
     required this.scale,
     required this.spark,
   });
@@ -151,9 +150,6 @@ class _Frame {
 
   /// Knot fill, 0–1.
   final double fill;
-
-  /// Knot rotation, radians clockwise.
-  final double turn;
 
   /// Knot size, about where the thread joins it.
   final double scale;
@@ -189,19 +185,13 @@ class _TracePainter extends CustomPainter {
     final c = th.center;
     final radius = _extent * th.unit;
 
-    /// Sizes the knot about the join, then turns it about its centre.
+    /// Sizes the knot about the join.
     void place() {
       final j = th!.join;
       canvas
         ..translate(j.dx, j.dy)
         ..scale(f.scale)
         ..translate(-j.dx, -j.dy);
-      if (f.turn != 0) {
-        canvas
-          ..translate(c.dx, c.dy)
-          ..rotate(f.turn)
-          ..translate(-c.dx, -c.dy);
-      }
     }
 
     // A soft light behind the knot once it has filled.
@@ -220,14 +210,13 @@ class _TracePainter extends CustomPainter {
     if (f.fill > 0) {
       canvas.save();
       place();
-      // Lit from the top-left; the light stays put while the knot turns.
-      Offset fixed(Offset p) => c + _turn(p - c, -f.turn);
+      // Lit from the top-left.
       canvas.drawPath(
         th.knot,
         Paint()
           ..shader = ui.Gradient.linear(
-            fixed(c - Offset(radius, radius)),
-            fixed(c + Offset(radius, radius)),
+            c - Offset(radius, radius),
+            c + Offset(radius, radius),
             [
               T.yellow.withValues(alpha: 0.22 * f.fill),
               T.yellow.withValues(alpha: 0.06 * f.fill),
@@ -362,10 +351,6 @@ class _TracePainter extends CustomPainter {
         draw: draw,
         erase: 0,
         fill: sine(_Beat.fillStart, _Beat.fillEnd),
-        // Past the turn the knot matches itself again, so it can snap back to 0.
-        turn: s < _Beat.turnEnd
-            ? math.pi / 2 * sine(_Beat.turnStart, _Beat.turnEnd)
-            : 0,
         scale: 1,
         spark: sine(0, 0.3) * (1 - sine(lastEnd - 0.9, lastEnd - 0.3)),
       );
@@ -377,7 +362,6 @@ class _TracePainter extends CustomPainter {
       draw: const [1, 1, 1, 1],
       erase: Curves.easeInCubic.transform(going),
       fill: 1 - sine(_Beat.outStart, _Beat.unfillEnd),
-      turn: 0,
       scale: 1 + (_gone - 1) * Curves.easeInCubic.transform(going),
       spark: 0,
     );
@@ -556,7 +540,6 @@ class _Thread {
       draw: const [1, 1, 1, 1],
       erase: 0,
       fill: 1,
-      turn: 0,
       scale: 1,
       spark: 0,
     );
