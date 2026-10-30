@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/accents.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/header_logo_trace.dart';
@@ -40,6 +41,11 @@ class _RetailHomeState extends State<RetailHome> {
 
   int _tab = 0;
   bool _balanceHidden = false;
+
+  /// Accent the header background is drawn in, and the mode whose brand
+  /// value it uses. Picked from the swatch button in the header.
+  int _accent = 0;
+  AccentMode _mode = AccentMode.dark;
   int _background = 2;
 
   void _copyIban() {
@@ -51,6 +57,24 @@ class _RetailHomeState extends State<RetailHome> {
   void _cycleBackground() {
     setState(() => _background = (_background + 1) % _backgrounds.length);
     _toast(_backgrounds[_background].$1);
+  }
+
+  /// Opens the accent picker. Picks apply as they're tapped, so the header
+  /// above the sheet previews them.
+  void _pickAccent() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (_) => _AccentSheet(
+        accent: _accent,
+        mode: _mode,
+        onChanged: (accent, mode) => setState(() {
+          _accent = accent;
+          _mode = mode;
+        }),
+      ),
+    );
   }
 
   void _toast(String message) {
@@ -67,6 +91,14 @@ class _RetailHomeState extends State<RetailHome> {
           content: Text(message, style: mr(14, FontWeight.w600, Colors.white)),
         ),
       );
+  }
+
+  /// The background in the picked accent. The backgrounds themselves stay
+  /// in brand yellow; a colour filter maps them over (see [accentFilter]).
+  Widget _recolour(Widget background) {
+    final filter = accentFilter(accents[_accent], _mode);
+    if (filter == null) return background;
+    return ColorFiltered(colorFilter: filter, child: background);
   }
 
   @override
@@ -96,12 +128,14 @@ class _RetailHomeState extends State<RetailHome> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: _cycleBackground,
-                          child: _backgrounds[_background].$2,
+                          child: _recolour(_backgrounds[_background].$2),
                         ),
                       ),
                       _Header(
                         iban: _iban,
                         topInset: MediaQuery.paddingOf(context).top,
+                        swatch: accents[_accent].of(_mode),
+                        onPickAccent: _pickAccent,
                         balanceHidden: _balanceHidden,
                         onToggleBalance: () =>
                             setState(() => _balanceHidden = !_balanceHidden),
@@ -139,6 +173,8 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.iban,
     required this.topInset,
+    required this.swatch,
+    required this.onPickAccent,
     required this.balanceHidden,
     required this.onToggleBalance,
     required this.onCopyIban,
@@ -146,6 +182,10 @@ class _Header extends StatelessWidget {
 
   final String iban;
   final double topInset;
+
+  /// The accent the header is drawn in, shown on the picker button.
+  final Color swatch;
+  final VoidCallback onPickAccent;
   final bool balanceHidden;
   final VoidCallback onToggleBalance;
   final VoidCallback onCopyIban;
@@ -186,6 +226,21 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
+              _Disc(
+                size: 42,
+                alpha: 0.10,
+                onTap: onPickAccent,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: swatch,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               _Disc(
                 size: 42,
                 alpha: 0.10,
@@ -572,6 +627,203 @@ class _TxRow extends StatelessWidget {
                   style: mr(14, FontWeight.w500, T.ink, height: _lh),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Accent picker
+// ---------------------------------------------------------------------------
+
+/// Bottom sheet for the header's accent: light or dark mode, then one of the
+/// eight accents. Each swatch shows both brand values, light over dark.
+class _AccentSheet extends StatefulWidget {
+  const _AccentSheet({
+    required this.accent,
+    required this.mode,
+    required this.onChanged,
+  });
+
+  final int accent;
+  final AccentMode mode;
+  final void Function(int accent, AccentMode mode) onChanged;
+
+  @override
+  State<_AccentSheet> createState() => _AccentSheetState();
+}
+
+class _AccentSheetState extends State<_AccentSheet> {
+  late int _accent = widget.accent;
+  late AccentMode _mode = widget.mode;
+
+  void _set(int accent, AccentMode mode) {
+    setState(() {
+      _accent = accent;
+      _mode = mode;
+    });
+    widget.onChanged(accent, mode);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: T.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        12,
+        24,
+        16 + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: T.black.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('Өнгө сонгох', style: mr(18, FontWeight.w800, T.black)),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: T.plate,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                for (final (mode, label) in const [
+                  (AccentMode.light, 'Цайвар горим'),
+                  (AccentMode.dark, 'Бараан горим'),
+                ])
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _set(_accent, mode),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _mode == mode ? T.ink : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          label,
+                          style: mr(
+                            14,
+                            FontWeight.w700,
+                            _mode == mode ? Colors.white : T.label,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1,
+            children: [
+              for (var i = 0; i < accents.length; i++)
+                _Swatch(
+                  accent: accents[i],
+                  mode: _mode,
+                  selected: i == _accent,
+                  onTap: () => _set(i, _mode),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One accent: a circle split light over dark, the current mode's half
+/// a little larger, ringed when picked.
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.accent,
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Accent accent;
+  final AccentMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected ? T.ink : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Container(
+              width: 46,
+              height: 46,
+              clipBehavior: Clip.antiAlias,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: mode == AccentMode.light ? 3 : 2,
+                    child: ColoredBox(color: accent.light),
+                  ),
+                  Expanded(
+                    flex: mode == AccentMode.dark ? 3 : 2,
+                    child: ColoredBox(color: accent.dark),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            accent.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: mr(
+              11.5,
+              selected ? FontWeight.w700 : FontWeight.w500,
+              selected ? T.black : T.label,
             ),
           ),
         ],
