@@ -13,14 +13,14 @@ import '../theme/tokens.dart';
 ///   (cubic ease-out), instead of v2's even draw;
 /// - stagger: the four pieces start one after another, round the knot
 ///   clockwise from where the line arrives, rather than all at once;
-/// - the lock: as the outline closes, the knot pops up from a touch smaller
-///   with a small overshoot, anchored where the thread joins it;
 /// - fill after the outline, as the reference's shapes gain their colour
 ///   once the strokes have formed them;
-/// - anticipation: the quarter turn pulls back a little first and overshoots
-///   a little after, and before coming undone the knot swells slightly, then
-///   shrinks away as its strokes unwind. Nothing leaves to the right: the
-///   knot simply goes, and the line comes in again from the left.
+/// - the exit: the knot shrinks away as its strokes unwind. Nothing leaves
+///   to the right: the knot simply goes, and the line comes in again from
+///   the left.
+///
+/// The reference's bounces (a pop as the shape locks, overshoot on turns, a
+/// swell before leaving) are left out: the knot never overshoots.
 ///
 /// The line still runs in from the left and hands over to the strokes at
 /// the same speed, as in v2. A copy of header_logo_v1_fast.dart (v2), which
@@ -90,29 +90,18 @@ class _Beat {
   static const draw = 2.3, stagger = 0.08;
   static const order = [2, 3, 0, 1];
 
-  // The lock: the knot pops up to full size and fills.
-  static const lockStart = 2.7, lockEnd = 3.6;
+  // The knot fills once its outline has formed, then turns a quarter.
   static const fillStart = 2.7, fillEnd = 3.7;
-
-  // A quarter turn with a little pull-back first and overshoot after.
   static const turnStart = 4.7, turnEnd = 6.1;
 
-  // Out: the knot swells, then shrinks as its strokes unwind. The rest of
-  // the loop is empty.
-  static const swellStart = 7.0, outStart = 7.3, eraseEnd = 8.3;
+  // Out: the knot shrinks as its strokes unwind. The rest of the loop is
+  // empty.
+  static const outStart = 7.3, eraseEnd = 8.3;
   static const unfillEnd = 7.8;
 }
 
-/// How far the knot sits below full size before it pops, how far it swells
-/// before coming undone, and how small it gets as it goes. The pop and the
-/// swell are kept small, a nudge rather than a bounce.
-const _small = 0.98, _swell = 1.015, _gone = 0.88;
-
-/// Slight anticipation and overshoot, about 1% either side.
-const _backInOut = Cubic(0.6, -0.15, 0.3, 1.15);
-
-/// Overshoots by about 2% and settles.
-const _backOut = Cubic(0.3, 1.25, 0.6, 1);
+/// How small the knot gets as it goes.
+const _gone = 0.88;
 
 /// The head's run in along the lead-in, from rest, arriving at the speed the
 /// strokes leave at. The strokes ease out on a cubic, so they leave at three
@@ -359,7 +348,7 @@ class _TracePainter extends CustomPainter {
     final lin = th.leadIn.length;
     final lastEnd = _Beat.inEnd + 3 * _Beat.stagger + _Beat.draw;
 
-    if (s < _Beat.swellStart) {
+    if (s < _Beat.outStart) {
       final draw = List<double>.filled(4, 0);
       for (var i = 0; i < 4; i++) {
         final start = _Beat.inEnd + i * _Beat.stagger;
@@ -375,14 +364,9 @@ class _TracePainter extends CustomPainter {
         fill: sine(_Beat.fillStart, _Beat.fillEnd),
         // Past the turn the knot matches itself again, so it can snap back to 0.
         turn: s < _Beat.turnEnd
-            ? math.pi /
-                  2 *
-                  _backInOut.transform(at(_Beat.turnStart, _Beat.turnEnd))
+            ? math.pi / 2 * sine(_Beat.turnStart, _Beat.turnEnd)
             : 0,
-        scale:
-            _small +
-            (1 - _small) *
-                _backOut.transform(at(_Beat.lockStart, _Beat.lockEnd)),
+        scale: 1,
         spark: sine(0, 0.3) * (1 - sine(lastEnd - 0.9, lastEnd - 0.3)),
       );
     }
@@ -394,9 +378,7 @@ class _TracePainter extends CustomPainter {
       erase: Curves.easeInCubic.transform(going),
       fill: 1 - sine(_Beat.outStart, _Beat.unfillEnd),
       turn: 0,
-      scale: s < _Beat.outStart
-          ? 1 + (_swell - 1) * sine(_Beat.swellStart, _Beat.outStart)
-          : _swell + (_gone - _swell) * Curves.easeInCubic.transform(going),
+      scale: 1 + (_gone - 1) * Curves.easeInCubic.transform(going),
       spark: 0,
     );
   }
@@ -595,7 +577,7 @@ class _Thread {
   late final _Run run;
 
   /// Where the lead-in meets the knot: the bottom ring's lowest point. The
-  /// knot pops and shrinks about it, so the thread stays attached.
+  /// knot shrinks about it as it goes, so it leaves where the thread joined.
   late final Offset join;
 
   /// The knot fully tied and filled, for reduce-motion.
