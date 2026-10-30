@@ -6,6 +6,10 @@ import '../widgets/app_icon.dart';
 import '../widgets/header_logo_trace.dart';
 import '../widgets/header_logo_trace_v2.dart';
 import '../widgets/header_logo_v8.dart';
+import '../widgets/header_logo_v9.dart';
+import '../widgets/header_logo_v10.dart';
+import '../widgets/header_logo_v11.dart';
+import '../widgets/header_logo_v12.dart';
 import '../widgets/header_logo_variants.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/nav_bar.dart';
@@ -41,11 +45,18 @@ class _RetailHomeState extends State<RetailHome> {
         ),
       ),
     ('Лого v8 — v6, удаан, зөөлөн', const HeaderLogoV8(underlap: 28)),
+    ('Лого v9 — 4 сум эргэлдэж нийлнэ', const HeaderLogoV9(underlap: 28)),
+    ('Лого v10 — 4 сум шулуун ирж нийлнэ', const HeaderLogoV10(underlap: 28)),
+    (
+      'Лого v11 — шулуун сум эргэлдэж лого болно',
+      const HeaderLogoV11(underlap: 28),
+    ),
+    ('Лого v12 — v11, сүүл нь бүдгэрнэ', const HeaderLogoV12(underlap: 28)),
   ];
 
   int _tab = 0;
   bool _balanceHidden = false;
-  int _background = 7;
+  int _background = 0;
 
   void _copyIban() {
     Clipboard.setData(ClipboardData(text: _iban.replaceAll(' ', '')));
